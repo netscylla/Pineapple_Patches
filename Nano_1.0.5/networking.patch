@@ -1,0 +1,108 @@
+diff -Npaur pineapple-new/modules/Networking/api/module.php /pineapple/modules/Networking/api/module.php
+--- pineapple-new/modules/Networking/api/module.php	2016-01-03 17:00:01.000000000 +0000
++++ /pineapple/modules/Networking/api/module.php	2016-01-16 14:54:13.000000000 +0000
+@@ -76,6 +76,10 @@ class Networking extends SystemModule
+             case 'disconnect':
+                 $this->disconnect();
+                 break;
++
++	    case 'getCurrentChannels':
++		$this->getCurrentChannels();
++		break;
+         }
+     }
+ 
+@@ -262,6 +266,12 @@ class Networking extends SystemModule
+         $this->response = $interfaceArray;
+     }
+ 
++    private function getCurrentChannels()
++    {
++        exec("iw phy0 info |grep -A 14 Frequencies|grep -v disabled|awk '{gsub(/[][]/,\"\"); print $4}'|awk NF=NF RS= OFS=,",$currentChannels);
++        $this->response = array("currentChannels" => $currentChannels);
++    }
++
+     private function saveAPConfig()
+     {
+         $config = $this->request->apConfig;
+diff -Npaur pineapple-new/modules/Networking/js/module.js /pineapple/modules/Networking/js/module.js
+--- pineapple-new/modules/Networking/js/module.js	2015-12-31 14:08:46.000000000 +0000
++++ /pineapple/modules/Networking/js/module.js	2016-01-16 14:54:13.000000000 +0000
+@@ -4,7 +4,6 @@ registerController('NetworkingRouteContr
+     $scope.routeInterface = "br-lan";
+     $scope.routeInterfaces = [];
+ 
+-
+     $scope.getRoute = (function(){
+         $api.request({
+             module: 'Networking',
+@@ -47,12 +46,12 @@ registerController('NetworkingRouteContr
+     });
+ 
+     $scope.getRoute();
+-
+ }]);
+ 
+ registerController('NetworkingAccessPointsController', ['$api', '$scope', '$timeout', function($api, $scope, $timeout) {
+     $scope.apConfigurationSaved = false;
+     $scope.apConfigurationError = "";
++    $scope.currentChannels="";
+     $scope.apConfig = {
+         selectedChannel: "1",
+         openSSID: "",
+@@ -85,7 +84,7 @@ registerController('NetworkingAccessPoin
+     $scope.getAPConfiguration = (function() {
+         $api.request({
+             module: "Networking",
+-            action: "getAPConfig"
++            action: "getAPConfig",
+         }, function(response) {
+             if (response.error === undefined) {
+                 $scope.apConfig = response;
+@@ -93,6 +92,17 @@ registerController('NetworkingAccessPoin
+         })
+     });
+ 
++        $scope.getCurrentChannels = (function() {
++                $api.request({
++                        module: "Networking",
++                        action: "getCurrentChannels"
++                }, function(response) {
++                        $scope.currentChannels = response.currentChannels;
++			
++                })
++        });
++    
++    $scope.getCurrentChannels();
+     $scope.getAPConfiguration();
+ }]);
+ 
+diff -Npaur pineapple-new/modules/Networking/module.html /pineapple/modules/Networking/module.html
+--- pineapple-new/modules/Networking/module.html	2015-12-31 14:08:46.000000000 +0000
++++ /pineapple/modules/Networking/module.html	2016-01-16 14:54:13.000000000 +0000
+@@ -55,9 +55,16 @@
+                 <form class="form-horizontal">
+                     <div class="form-group">
+                         <label class="col-sm-3 control-label">Access Point Channel</label>
+-                        <div class="col-sm-5">
++                      
++                    <div class="form-group">
++                    <label class="col-sm-2">Available: </label>
++                        <div class="col-sm-7">
++                            <input type="text" class="form-control" ng-model="currentChannels" disabled>
++                        </div><br><br>
++                    <label class="col-sm-2">Select: </label>
++                        <div class="col-sm-4">
+                             <select class="form-control" ng-model="apConfig['selectedChannel']">
+-                                <option ng-repeat="channel in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]">{{ channel }}</option>
++				  <option ng-repeat="channel in [1,2,3,4,5,6,7,8,9,10,11,12,13,14]">{{ channel }}</option>
+                             </select>
+                         </div>
+                     </div>
+@@ -265,4 +272,4 @@
+             </div>
+         </div>
+     </div>
+-</div>
+\ No newline at end of file
++</div>

@@ -1,0 +1,55 @@
+diff -Npaur pineapple-cur/modules/PineAP/api/module.php pineapple-new/pineapple/modules/PineAP/api/module.php
+--- pineapple-cur/modules/PineAP/api/module.php	2016-01-23 11:48:46.000000000 +0000
++++ pineapple-new/pineapple/modules/PineAP/api/module.php	2016-01-20 23:07:10.000000000 +0000
+@@ -51,9 +51,19 @@ class PineAP extends SystemModule
+             case 'saveAsDefault':
+                 $this->saveAsDefault();
+                 break;
++
++            case 'downloadPineAPPool':
++                $this->downloadPineAPPool();
++                break;
+         }
+     }
+ 
++
++    private function downloadPineAPPool()
++    {
++        $this->response = array("download" => $this->downloadFile('/etc/pineapple/ssid_file'));
++    }
++
+     private function enable()
+     {
+         $this->pineAPHelper->enablePineAP();
+diff -Npaur pineapple-cur/modules/PineAP/js/module.js pineapple-new/pineapple/modules/PineAP/js/module.js
+--- pineapple-cur/modules/PineAP/js/module.js	2016-01-23 11:48:46.000000000 +0000
++++ pineapple-new/pineapple/modules/PineAP/js/module.js	2016-01-20 23:07:10.000000000 +0000
+@@ -6,6 +6,17 @@ registerController('PineapPoolController
+     $scope.clearedSSIDPool = "";
+     $scope.lengthError = "";
+ 
++    $scope.downloadPool = (function() {
++        $api.request({
++            module: 'PineAP',
++            action: 'downloadPineAPPool'
++        }, function(response) {
++            if (response.error === undefined) {
++                window.location = '/api/?download=' + response.download;
++            } 
++        });
++    });
++
+     $scope.addSSID = (function() {
+         $api.request({
+             module: 'PineAP',
+diff -Npaur pineapple-cur/modules/PineAP/module.html pineapple-new/pineapple/modules/PineAP/module.html
+--- pineapple-cur/modules/PineAP/module.html	2016-01-23 11:48:46.000000000 +0000
++++ pineapple-new/pineapple/modules/PineAP/module.html	2016-01-20 23:07:10.000000000 +0000
+@@ -126,6 +126,7 @@
+                             <span class="caret"></span>
+                         </button>
+                         <ul class="dropdown-menu" aria-labelledby="poolDropdown">
++                            <li ng-click="downloadPool()"><a>Download SSID Pool</a></li>
+                             <li ng-click="clearPool()"><a>Clear SSID Pool</a></li>
+                         </ul>
+                     </span>
