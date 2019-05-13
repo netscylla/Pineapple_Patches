@@ -1,0 +1,143 @@
+diff -Npaur Configuration-o/api/module.php Configuration/api/module.php
+--- Configuration-o/api/module.php	2019-05-13 10:20:56.000000000 +0100
++++ Configuration/api/module.php	2019-05-13 10:24:24.000000000 +0100
+@@ -72,6 +72,15 @@ class Configuration extends SystemModule
+             case 'getDevice':
+                 $this->getDeviceName();
+                 break;
++
++	    case 'changeRegion':
++                $this->changeRegion();
++                break;
++
++            case 'getCurrentRegion':
++                $this->getCurrentRegion();
++                break;
++
+         }
+     }
+ 
+@@ -207,4 +216,18 @@ class Configuration extends SystemModule
+ 
+         $this->response = array("success" => false);
+     }
+-}
+\ No newline at end of file
++
++    private function getCurrentRegion()
++    {
++        $currentRegion = exec('iw reg get|head -n 2|tail -n 1|cut -b 9-10');
++        $this->response = array("currentRegion" => $currentRegion);
++    }
++
++    private function changeRegion()
++    {
++        $region = escapeshellarg($this->request->Region);
++        exec("iw reg set {$region}");
++        $this->response = array("success" => true);
++    }
++
++}
+diff -Npaur Configuration-o/js/module.js Configuration/js/module.js
+--- Configuration-o/js/module.js	2019-05-13 10:20:56.000000000 +0100
++++ Configuration/js/module.js	2019-05-13 10:24:24.000000000 +0100
+@@ -10,6 +10,8 @@ registerController("ConfigurationGeneral
+ 	$scope.showPasswordError = false;
+ 	$scope.device = "";
+ 	$scope.resetMessage = "";
++	$scope.customRegion="";
++	$scope.currentRegion="";
+ 
+     $api.request({
+         module: 'Configuration',
+@@ -125,6 +127,15 @@ registerController("ConfigurationGeneral
+ 		{ value: 'GMT-12', description: "(GMT+12) Auckland, Wellington, Fiji, Kamchatka" }
+ 	];
+ 
++        $scope.getCurrentRegion = (function() {
++                $api.request({
++                        module: "Configuration",
++                       action: "getCurrentRegion"
++                }, function(response) {
++                        $scope.currentRegion = response.currentRegion;
++               });
++        });
++
+ 
+ 	$scope.getCurrentTimeZone = (function() {
+ 		$api.request({
+@@ -156,6 +167,25 @@ registerController("ConfigurationGeneral
+ 		});
+ 	});
+ 
++        $scope.changeRegion = (function() {
++		var tmpRegion;
++		if ($scope.customRegion.trim() !== "") {
++                        tmpRegion = $scope.customRegion;
++                }
++                $api.request({
++                        module: "Configuration",
++                        action: "changeRegion",
++                        Region: tmpRegion,
++
++                }, function(response) {
++                        if (response.success !== undefined) {
++                                $scope.getCurrentRegion();
++				$scope.customRegion="00";
++                        }
++                });
++        });
++
++	$scope.getCurrentRegion();
+ 	$scope.getCurrentTimeZone();
+ }]);
+ 
+@@ -281,4 +311,4 @@ registerController('ButtonScriptControll
+ 			}
+ 		});
+ 	});
+-}]);
+\ No newline at end of file
++}]);
+diff -Npaur Configuration-o/module.html Configuration/module.html
+--- Configuration-o/module.html	2019-05-13 10:20:56.000000000 +0100
++++ Configuration/module.html	2019-05-13 10:24:24.000000000 +0100
+@@ -45,7 +45,30 @@
+                             <button type="button" class="btn btn-default" ng-click="changeTimezone()">Save Time Zone</button>
+                         </div>
+                     </div>
+-                    <br/><br/><br/>
++		    <!-- new radio mode here -->
++                  <br/>
++  		  <div class="row">
++                   <div class="input-group">
++                      <span class="input-group-addon">Region:</span>
++                      <input type="text" class="form-control" ng-model="currentRegion" disabled>
++                   </div>
++                  </div>
++		  <br/>
++                  <div class="row">
++                   <div class="input-group">
++                      <span class="input-group-addon">Region Code</span>
++		      <input type="text" class="form-control" placeholder="00" ng-model="customRegion">
++		   </div>
++                  </div>
++                  <br/>
++                    <div class="row">
++                        <p class="alert well-sm alert-success" ng-show="showRegionSuccess">Region changed successfully.</p>
++                        <div class="input-group">
++                            <button type="button" class="btn btn-default" ng-click="changeRegion()">Change Region</button>
++                        </div>
++                    </div>
++
++                    <br/><br/>
+                     <div class="row">
+                         <div class="input-group">
+                             <span class="input-group-addon">Old Password</span>
+@@ -133,4 +156,4 @@
+             </div>
+         </div>
+     </div>
+-</div>
+\ No newline at end of file
++</div>
